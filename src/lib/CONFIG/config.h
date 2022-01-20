@@ -117,9 +117,11 @@ typedef union {
         uint16_t failsafe:10; // us output during failsafe +988 (e.g. 512 here would be 1500us)
         uint8_t inputChannel:4; // 0-based input channel
         uint8_t inverted:1; // invert channel output
+        uint8_t ana:1;
+        uint8_t dig:1;
         uint8_t unused:1;
     } val;
-    uint16_t raw;
+    uint32_t raw;
 } rx_config_pwm_t;
 
 typedef struct {
@@ -167,8 +169,8 @@ public:
     void SetSSID(const char *ssid);
     void SetPassword(const char *password);
     #if defined(GPIO_PIN_PWM_OUTPUTS)
-    void SetPwmChannel(uint8_t ch, uint16_t failsafe, uint8_t inputCh, bool inverted);
-    void SetPwmChannelRaw(uint8_t ch, uint16_t raw);
+    void SetPwmChannel(uint8_t ch, uint16_t failsafe, uint8_t inputCh, bool inverted,bool ana, bool dig);
+    void SetPwmChannelRaw(uint8_t ch, uint32_t raw);
     #endif
 
 private:

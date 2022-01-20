@@ -14,14 +14,16 @@ function getPwmFormData()
     {
         let inChannel = inField.value;
         let invert = _(`pwm_${ch}_inv`).checked ? 1 : 0;
+        let ana = _(`pwm_${ch}_ana`).checked ? 1 : 0;
+        let dig = _(`pwm_${ch}_dig`).checked ? 1 : 0;
         let failsafeField = _(`pwm_${ch}_fs`);
         let failsafe = failsafeField.value;
         if (failsafe > 2011) failsafe = 2011;
         if (failsafe < 988) failsafe = 988;
         failsafeField.value = failsafe;
 
-        let raw = (invert << 14) | (inChannel << 10) | (failsafe - 988);
-        //console.log(`PWM ${ch} input=${inChannel} fs=${failsafe} inv=${invert} raw=${raw}`);
+        let raw = (dig << 16) | (ana << 15) | (invert << 14) | (inChannel << 10) | (failsafe - 988);
+        console.log(`PWM ${ch} input=${inChannel} fs=${failsafe} inv=${invert} ana=${ana} dig=${dig} raw=${raw}`);
         outData.push(raw);
         ++ch;
     }
@@ -36,11 +38,13 @@ function updatePwmSettings(arPwm)
     if (arPwm === undefined)
         return;
     // arPwm is an array of raw integers [49664,50688,51200]. 10 bits of failsafe position, 4 bits of input channel, 1 bit invert
-    let htmlFields = ['<table class="pwmtbl"><tr><th>Output</th><th>Input</th><th>Invert?</th><th>Failsafe</th></tr>'];
+    let htmlFields = ['<table class="pwmtbl"><tr><th>Output</th><th>Input</th><th>Invert?</th><th>Ana?</th><th>Dig?</th><th>Failsafe</th></tr>'];
     arPwm.forEach((item, index) => {
         let failsafe = (item & 1023) + 988; // 10 bits
         let ch = (item >> 10) & 15; // 4 bits
         let inv = (item >> 14) & 1;
+        let ana = (item >> 15) & 1;
+        let dig = (item >> 16) & 1;
         htmlFields.push(`<tr><th>${index+1}</th><td><select id="pwm_${index}_ch">
           <option value="0"${(ch===0) ? ' selected' : ''}>ch1</option>
           <option value="1"${(ch===1) ? ' selected' : ''}>ch2</option>
@@ -55,6 +59,8 @@ function updatePwmSettings(arPwm)
           <option value="10"${(ch===10) ? ' selected' : ''}>ch11 (AUX7)</option>
           <option value="11"${(ch===11) ? ' selected' : ''}>ch12 (AUX8)</option>
         </select></td><td><input type="checkbox" id="pwm_${index}_inv"${(inv) ? ' checked' : ''}></td>
+        <td><input type="checkbox" id="pwm_${index}_ana"${(ana) ? ' checked' : ''} onclick="pwm_${index}_dig.checked ? pwm_${index}_dig.checked = 0 : 0;"></td>
+        <td><input type="checkbox" id="pwm_${index}_dig"${(dig) ? ' checked' : ''} onclick="pwm_${index}_ana.checked ? pwm_${index}_ana.checked = 0 : 0;"></td>
         <td><input id="pwm_${index}_fs" value="${failsafe}" size="4"/></td></tr>`);
     });
     htmlFields.push('<tr><td colspan="4"><input type="submit" value="Set PWM Output"></td></tr></table>');
@@ -66,6 +72,11 @@ function updatePwmSettings(arPwm)
     _('pwm').appendChild(grp);
     _('pwm').addEventListener('submit', callback('Set PWM Output', 'Unknown error', '/pwm', getPwmFormData));
     _('pwm_container').style.display = 'block';
+}
+
+function check_checked(check) {
+    console.log(check);
+    _(check).checked ? _(check).checked = 0 : 0;
 }
 
 function get_mode() {

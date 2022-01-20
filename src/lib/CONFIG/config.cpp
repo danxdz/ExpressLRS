@@ -515,8 +515,8 @@ RxConfig::SetDefaults()
     SetPassword("");
 #if defined(GPIO_PIN_PWM_OUTPUTS)
     for (unsigned int ch=0; ch<PWM_MAX_CHANNELS; ++ch)
-        SetPwmChannel(ch, 512, ch, false);
-    SetPwmChannel(2, 0, 2, false); // ch2 is throttle, failsafe it to 988
+        SetPwmChannel(ch, 512, ch, false, false, false);
+    SetPwmChannel(2, 0, 2, false, false, false); // ch2 is throttle, failsafe it to 988
 #endif
     Commit();
 }
@@ -546,24 +546,26 @@ RxConfig::SetPassword(const char *password)
 
 #if defined(GPIO_PIN_PWM_OUTPUTS)
 void
-RxConfig::SetPwmChannel(uint8_t ch, uint16_t failsafe, uint8_t inputCh, bool inverted)
+RxConfig::SetPwmChannel(uint8_t ch, uint16_t failsafe, uint8_t inputCh, bool inverted,bool ana,bool dig)
 {
     if (ch > PWM_MAX_CHANNELS)
         return;
 
     rx_config_pwm_t *pwm = &m_config.pwmChannels[ch];
-    if (pwm->val.failsafe == failsafe && pwm->val.inputChannel == inputCh
-        && pwm->val.inverted == inverted)
-        return;
+    if (pwm->val.failsafe == failsafe && pwm->val.inputChannel == inputCh 
+        && pwm->val.inverted == inverted && pwm->val.ana == ana && pwm->val.dig == dig)
+    return;
 
     pwm->val.failsafe = failsafe;
     pwm->val.inputChannel = inputCh;
     pwm->val.inverted = inverted;
+    pwm->val.ana  = ana;
+    pwm->val.dig  = dig;
     m_modified = true;
 }
 
 void
-RxConfig::SetPwmChannelRaw(uint8_t ch, uint16_t raw)
+RxConfig::SetPwmChannelRaw(uint8_t ch, uint32_t raw)
 {
     if (ch > PWM_MAX_CHANNELS)
         return;

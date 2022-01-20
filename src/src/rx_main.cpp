@@ -1068,12 +1068,27 @@ static void servosUpdate(unsigned long now)
         {
             const rx_config_pwm_t *chConfig = config.GetPwmChannel(ch);
             uint16_t us = CRSF_to_US(crsf.GetChannelOutput(chConfig->val.inputChannel));
+            DBG("ch %u- ana: %u - dig: %u - inv: %u",ch,chConfig->val.ana,chConfig->val.dig,chConfig->val.inverted);
             if (chConfig->val.inverted)
                 us = 3000U - us;
-
-            if (Servos[ch])
-                Servos[ch]->writeMicroseconds(us);
-            else if (us >= 988U && us <= 2012U)
+            if (Servos[ch]) {
+                if (chConfig->val.ana == 1) {
+                    int analog;
+                    //us = us - 1500;
+                    analog = map(abs(us), 988U, 2012U, 0, 255);
+                    analog = constrain(analog, 0, 255); 
+                    analogWrite(SERVO_PINS[ch], analog); 
+                    DBGLN(" - Analog: %u - us: %u",analog,us);
+                } else if (chConfig->val.dig == 1) {
+                    uint16_t us_bit = CRSF_to_BIT(crsf.GetChannelOutput(chConfig->val.inputChannel));
+                    DBGLN(" - Bit: %u",us_bit);
+                    digitalWrite(SERVO_PINS[ch], us_bit);
+                   
+                } else  {
+                    DBGLN(" - PWM: %u",us);
+                    Servos[ch]->writeMicroseconds(us);
+                }
+            } else if (us >= 988U && us <= 2012U)
             {
                 // us might be out of bounds if this is a switch channel and it has not been
                 // received yet. Delay initializing the servo until the channel is valid
