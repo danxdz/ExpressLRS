@@ -1,5 +1,5 @@
 #ifndef DEVICE_NAME
-#define DEVICE_NAME "DIY900 PWMP"
+#define DEVICE_NAME "DIY900 PWMP_AD"
 #endif
 
 #define CRSF_RCVR_NO_SERIAL
@@ -7,9 +7,10 @@
 // GPIO pin definitions
 // same as DIY_900_RX_ESP8285_SX127x except with no serial/button and PWM outputs
 // 
-// Add motorControl() @ rx_main to control one MAX14870 (one brushed ESC)
-// GPIO 0 - analogWrite -> 0-255 = speed control
-// GPIO 5 - digitalWrite -> 0-1 = direction 
+// Add:
+// analogWrite -> 0-255
+// digitalWrite -> 0-1
+// to rx_main
 #define GPIO_PIN_NSS            15
 #define GPIO_PIN_DIO0           4
 #define GPIO_PIN_MOSI           13
