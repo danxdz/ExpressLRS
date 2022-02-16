@@ -27,16 +27,6 @@
 
 #include "WebContent.h"
 
-#if defined(Regulatory_Domain_AU_915) || defined(Regulatory_Domain_EU_868) || defined(Regulatory_Domain_IN_866) || defined(Regulatory_Domain_FCC_915) || defined(Regulatory_Domain_AU_433) || defined(Regulatory_Domain_EU_433)
-#include "SX127xDriver.h"
-extern SX127xDriver Radio;
-#endif
-
-#if defined(Regulatory_Domain_ISM_2400)
-#include "SX1280Driver.h"
-extern SX1280Driver Radio;
-#endif
-
 #include "config.h"
 #if defined(TARGET_TX)
 extern TxConfig config;
@@ -356,6 +346,7 @@ static void WebUploadResponseHandler(AsyncWebServerRequest *request) {
 }
 
 static void WebUploadDataHandler(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
+  force_update = force_update || request->hasArg("force");
   if (index == 0) {
     DBGLN("Update: %s", filename.c_str());
     #if defined(PLATFORM_ESP8266)

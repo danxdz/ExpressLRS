@@ -2,16 +2,7 @@
 #include "common.h"
 #include "LowPassFilter.h"
 
-#if defined(Regulatory_Domain_AU_915) || defined(Regulatory_Domain_EU_868) || defined(Regulatory_Domain_IN_866) || defined(Regulatory_Domain_FCC_915) || defined(Regulatory_Domain_AU_433) || defined(Regulatory_Domain_EU_433)
-#include "SX127xDriver.h"
-SX127xDriver Radio;
-#elif defined(Regulatory_Domain_ISM_2400)
-#include "SX1280Driver.h"
-SX1280Driver Radio;
-#else
-#error "Radio configuration is not valid!"
-#endif
-
+#include "LBT.h"
 #include "crc.h"
 #include "CRSF.h"
 #include "telemetry_protocol.h"
@@ -129,6 +120,7 @@ LQCALC<100> LQCalc;
 uint8_t uplinkLQ;
 
 uint8_t scanIndex = RATE_DEFAULT;
+uint8_t ExpressLRS_nextAirRateIndex;
 
 int32_t RawOffset;
 int32_t prevRawOffset;
@@ -137,7 +129,6 @@ int32_t OffsetDx;
 int32_t prevOffset;
 RXtimerState_e RXtimerState;
 uint32_t GotConnectionMillis = 0;
-bool connectionHasModelMatch;
 const uint32_t ConsiderConnGoodMillis = 1000; // minimum time before we can consider a connection to be 'good'
 
 ///////////////////////////////////////////////
@@ -232,7 +223,7 @@ void ICACHE_RAM_ATTR getRFlinkInfo()
     crsf.LinkStatistics.active_antenna = antenna;
     crsf.LinkStatistics.uplink_SNR = Radio.LastPacketSNR;
     //crsf.LinkStatistics.uplink_Link_quality = uplinkLQ; // handled in Tick
-    crsf.LinkStatistics.rf_Mode = (uint8_t)RATE_4HZ - (uint8_t)ExpressLRS_currAirRate_Modparams->enum_rate;
+    crsf.LinkStatistics.rf_Mode = ExpressLRS_currAirRate_Modparams->enum_rate;
     //DBGLN(crsf.LinkStatistics.uplink_RSSI_1);
     #if defined(DEBUG_BF_LINK_STATS)
     crsf.LinkStatistics.downlink_RSSI = debug1;
@@ -254,7 +245,8 @@ void SetRFLinkRate(uint8_t index) // Set speed of RF link
     bool invertIQ = UID[5] & 0x01;
 
     hwTimer.updateInterval(ModParams->interval);
-    Radio.Config(ModParams->bw, ModParams->sf, ModParams->cr, GetInitialFreq(), ModParams->PreambleLen, invertIQ, ModParams->PayloadLength, 0);
+    Radio.Config(ModParams->bw, ModParams->sf, ModParams->cr, GetInitialFreq(),
+                 ModParams->PreambleLen, invertIQ, ModParams->PayloadLength, 0);
 
     // Wait for (11/10) 110% of time it takes to cycle through all freqs in FHSS table (in ms)
     cycleInterval = ((uint32_t)11U * FHSSgetChannelCount() * ModParams->FHSShopInterval * ModParams->interval) / (10U * 1000U);
@@ -297,6 +289,10 @@ bool ICACHE_RAM_ATTR HandleSendTelemetryResponse()
     {
         return false; // don't bother sending tlm if disconnected or TLM is off
     }
+
+#if defined(Regulatory_Domain_EU_CE_2400)
+    BeginClearChannelAssessment();
+#endif
 
     alreadyTLMresp = true;
     Radio.TXdataBuffer[0] = TLM_PACKET;
@@ -342,7 +338,12 @@ bool ICACHE_RAM_ATTR HandleSendTelemetryResponse()
     Radio.TXdataBuffer[0] |= (crc >> 6) & 0b11111100;
     Radio.TXdataBuffer[7] = crc & 0xFF;
 
-    Radio.TXnb();
+#if defined(Regulatory_Domain_EU_CE_2400)
+    if (ChannelIsClear())
+#endif
+    {
+        Radio.TXnb();
+    }
     return true;
 }
 
@@ -507,6 +508,14 @@ static void ICACHE_RAM_ATTR updateDiversity()
 
 void ICACHE_RAM_ATTR HWtimerCallbackTock()
 {
+#if defined(Regulatory_Domain_EU_CE_2400)
+    // Emulate that TX just happened, even if it didn't because channel is not clear
+    if(!LBTSuccessCalc.currentIsSet())
+    {
+        Radio.TXdoneCallback();
+    }
+#endif
+
     PFDloop.intEvent(micros()); // our internal osc just fired
 
     updateDiversity();
@@ -538,7 +547,6 @@ void LostConnection()
     DBGLN("lost conn fc=%d fo=%d", FreqCorrection, hwTimer.FreqOffset);
 
     RFmodeCycleMultiplier = 1;
-    connectionStatePrev = connectionState;
     connectionState = disconnected; //set lost connection
     RXtimerState = tim_disconnected;
     hwTimer.resetFreqOffset();
@@ -570,7 +578,6 @@ void LostConnection()
 void ICACHE_RAM_ATTR TentativeConnection(unsigned long now)
 {
     PFDloop.reset();
-    connectionStatePrev = connectionState;
     connectionState = tentative;
     connectionHasModelMatch = false;
     RXtimerState = tim_disconnected;
@@ -596,7 +603,6 @@ void GotConnection(unsigned long now)
     LockRFmode = true;
 #endif
 
-    connectionStatePrev = connectionState;
     connectionState = connected; //we got a packet, therefore no lost connection
     RXtimerState = tim_tentative;
     GotConnectionMillis = now;
@@ -716,11 +722,11 @@ static bool ICACHE_RAM_ATTR ProcessRfPacket_SYNC(uint32_t now)
 #endif
 
     // Will change the packet air rate in loop() if this changes
-    ExpressLRS_nextAirRateIndex = (Radio.RXdataBuffer[3] & 0b11000000) >> 6;
+    ExpressLRS_nextAirRateIndex = (Radio.RXdataBuffer[3] >> SYNC_PACKET_RATE_OFFSET) & SYNC_PACKET_RATE_MASK;
     // Update switch mode encoding immediately
-    OtaSetSwitchMode((OtaSwitchMode_e)((Radio.RXdataBuffer[3] & 0b00000110) >> 1));
+    OtaSetSwitchMode((OtaSwitchMode_e)((Radio.RXdataBuffer[3] >> SYNC_PACKET_SWITCH_OFFSET) & SYNC_PACKET_SWITCH_MASK));
     // Update TLM ratio
-    expresslrs_tlm_ratio_e TLMrateIn = (expresslrs_tlm_ratio_e)((Radio.RXdataBuffer[3] & 0b00111000) >> 3);
+    expresslrs_tlm_ratio_e TLMrateIn = (expresslrs_tlm_ratio_e)((Radio.RXdataBuffer[3] >> SYNC_PACKET_TLM_OFFSET) & SYNC_PACKET_TLM_MASK);
     if (ExpressLRS_currAirRate_Modparams->TLMinterval != TLMrateIn)
     {
         DBGLN("New TLMrate: %d", TLMrateIn);
@@ -991,6 +997,10 @@ static void setupRadio()
 
     // Set transmit power to maximum
     POWERMGNT.setPower(MaxPower);
+
+#if defined(Regulatory_Domain_EU_CE_2400)
+    LBTEnabled = (MaxPower > PWR_10mW);
+#endif
 
     Radio.RXdoneCallback = &RXdoneISR;
     Radio.TXdoneCallback = &TXdoneISR;

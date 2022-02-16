@@ -11,15 +11,6 @@
 #include "OTA.h"
 #include "hwTimer.h"
 
-#if defined(Regulatory_Domain_AU_915) || defined(Regulatory_Domain_EU_868) || defined(Regulatory_Domain_IN_866) || defined(Regulatory_Domain_FCC_915) || defined(Regulatory_Domain_AU_433) || defined(Regulatory_Domain_EU_433)
-#include "SX127xDriver.h"
-extern SX127xDriver Radio;
-#elif defined(Regulatory_Domain_ISM_2400)
-#include "SX1280Driver.h"
-extern SX1280Driver Radio;
-#else
-#error "Radio configuration is not valid!"
-#endif
 
 static const char emptySpace[1] = {0};
 static char strPowerLevels[] = "10;25;50;100;250;500;1000;2000";
@@ -72,7 +63,7 @@ static struct luaItem_selection luaFanThreshold = {
 
 #if defined(Regulatory_Domain_EU_CE_2400)
 static struct luaItem_string luaCELimit = {
-    {"10mW CE LIMIT", CRSF_INFO},
+    {"100mW CE LIMIT", CRSF_INFO},
     emptySpace
 };
 #endif
@@ -203,13 +194,13 @@ struct luaItem_selection luaBluetoothTelem = {
 
 static char luaBadGoodString[10];
 
+extern bool ICACHE_RAM_ATTR IsArmed();
 extern TxConfig config;
 extern void VtxTriggerSend();
 extern uint8_t adjustPacketRateForBaud(uint8_t rate);
 extern void SetSyncSpam();
 extern void EnterBindingMode();
 extern bool InBindingMode;
-extern bool connectionHasModelMatch;
 extern bool RxWiFiReadyToSend;
 #if defined(USE_TX_BACKPACK)
 extern bool TxBackpackWiFiReadyToSend;
@@ -433,8 +424,6 @@ static void registerLuaParameters()
 
 static int event()
 {
-  setLuaWarningFlag(LUA_FLAG_MODEL_MATCH, connectionState == connected && connectionHasModelMatch == false);
-  setLuaWarningFlag(LUA_FLAG_CONNECTED, connectionState == connected);
   uint8_t rate = adjustPacketRateForBaud(config.GetRate());
   setLuaTextSelectionValue(&luaAirRate, RATE_MAX - 1 - rate);
   setLuaTextSelectionValue(&luaTlmRate, config.GetTlm());
