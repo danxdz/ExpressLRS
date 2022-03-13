@@ -2,6 +2,7 @@
 #define DEVICE_NAME "DIY900 PWMP"
 #endif
 
+#define USE_ANALOG_VBAT
 #define CRSF_RCVR_NO_SERIAL
 
 // GPIO pin definitions
@@ -19,6 +20,15 @@
 #define GPIO_PIN_PWM_OUTPUTS    {0, 5, 9, 10}
 #else
 #define GPIO_PIN_PWM_OUTPUTS    {0, 1, 3, 5, 9, 10}
+#endif
+
+// Vbat = (adc - ANALOG_VBAT_OFFSET) / ANALOG_VBAT_SCALE
+// OFFSET is needed becauae ESPs don't go down to 0 even if their ADC is grounded
+#if !defined(ANALOG_VBAT_OFFSET)
+#define ANALOG_VBAT_OFFSET      12
+#endif
+#if !defined(ANALOG_VBAT_SCALE)
+#define ANALOG_VBAT_SCALE       410
 #endif
 
 #define POWER_OUTPUT_FIXED 15 //MAX power for 900 RXes
