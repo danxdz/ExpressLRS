@@ -30,6 +30,7 @@ static void reportVbat()
     // Values are MSB first (BigEndian)
     crsfbatt.p.voltage = htobe16(vbat);
     // No sensors for current, capacity, or remaining available
+    //DBGLN("%u",vbat); to check if good value received
 
     CRSF::SetHeaderAndCrc((uint8_t *)&crsfbatt, CRSF_FRAMETYPE_BATTERY_SENSOR, CRSF_FRAME_SIZE(sizeof(crsf_sensor_battery_t)), CRSF_ADDRESS_CRSF_TRANSMITTER);
     telemetry.AppendTelemetryPackage((uint8_t *)&crsfbatt);
