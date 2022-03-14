@@ -6,8 +6,10 @@ void Screen::nullCallback(int updateType) {}
 void (*Screen::updatecallback)(int updateType) = &nullCallback;
 
 
-#ifdef Regulatory_Domain_ISM_2400
+#if defined(RADIO_SX128X)
 const char *Screen::rate_string[RATE_MAX_NUMBER] = {
+    "F1000Hz",
+    "F500Hz",
     "500Hz",
     "250Hz",
     "150Hz",
