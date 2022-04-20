@@ -393,7 +393,11 @@ bool ICACHE_RAM_ATTR CRSF::ProcessPacket()
 
     const uint8_t packetType = CRSF::inBuffer.asRCPacket_t.header.type;
     volatile uint8_t *SerialInBuffer = CRSF::inBuffer.asUint8_t;
+    if(packetType!=CRSF_FRAMETYPE_RC_CHANNELS_PACKED){
+   
+            DBGLN("T:%u:0x%x:0x%x;0x%x:%u:%u",micros(),packetType,SerialInBuffer[3],SerialInBuffer[4],SerialInBuffer[5],SerialInBuffer[6]);
 
+            }
     if (packetType == CRSF_FRAMETYPE_RC_CHANNELS_PACKED)
     {
         CRSF::RCdataLastRecv = micros();
@@ -404,6 +408,8 @@ bool ICACHE_RAM_ATTR CRSF::ProcessPacket()
     else if (packetType >= CRSF_FRAMETYPE_DEVICE_PING &&
             (SerialInBuffer[3] == CRSF_ADDRESS_FLIGHT_CONTROLLER || SerialInBuffer[3] == CRSF_ADDRESS_BROADCAST || SerialInBuffer[3] == CRSF_ADDRESS_CRSF_RECEIVER))
     {
+            DBGLN("CRSF_FRAMETYPE_DEVICE_PING");
+
         // Some types trigger telemburst to attempt a connection even with telm off
         // but for pings (which are sent when the user loads Lua) do not forward
         // unless connected
@@ -607,10 +613,14 @@ void ICACHE_RAM_ATTR CRSF::handleUARTin()
 
             if (SerialInPacketPtr >= (SerialInPacketLen + 2)) // plus 2 because the packlen is referenced from the start of the 'type' flag, IE there are an extra 2 bytes.
             {
+            DBGLN("SerialInPacketPtr:%u:%u",SerialInPacketPtr,SerialInPacketPtr);
+
                 char CalculatedCRC = crsf_crc.calc(SerialInBuffer + 2, SerialInPacketPtr - 3);
+                    DBGLN("%u,%u",CalculatedCRC,SerialInBuffer[SerialInPacketPtr-1]);
 
                 if (CalculatedCRC == SerialInBuffer[SerialInPacketPtr-1])
                 {
+
                     GoodPktsCount++;
                     if (ProcessPacket())
                     {
@@ -952,6 +962,8 @@ uint16_t CRSF::GetChannelOutput(uint8_t ch)
 
 void CRSF::GetDeviceInformation(uint8_t *frame, uint8_t fieldCount)
 {
+    DBGLN("send info");
+
     deviceInformationPacket_t *device = (deviceInformationPacket_t *)(frame + sizeof(crsf_ext_header_t) + device_name_size);
     // Packet starts with device name
     memcpy(frame + sizeof(crsf_ext_header_t), device_name, device_name_size);

@@ -297,6 +297,8 @@ void sendELRSstatus()
   // to support sending a params.msg, buffer should be extended by the strlen of the message
   // and copied into params->msg (with trailing null)
   strcpy(params->msg, warningInfo);
+  DBGLN("send 2E");
+
   crsf.packetQueueExtended(0x2E, &buffer, sizeof(buffer));
 }
 
