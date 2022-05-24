@@ -621,10 +621,10 @@ void ICACHE_RAM_ATTR CRSF::handleUARTin()
 
             if (SerialInPacketPtr >= (SerialInPacketLen + 2)) // plus 2 because the packlen is referenced from the start of the 'type' flag, IE there are an extra 2 bytes.
             {
-            DBGLN("SerialInPacketPtr:%u:%u",SerialInPacketPtr,SerialInPacketPtr);
+           // DBGLN("SerialInPacketPtr:%u:%u",SerialInPacketPtr,SerialInPacketPtr);
 
                 char CalculatedCRC = crsf_crc.calc(SerialInBuffer + 2, SerialInPacketPtr - 3);
-                    DBGLN("%u,%u",CalculatedCRC,SerialInBuffer[SerialInPacketPtr-1]);
+                   // DBGLN("%u,%u",CalculatedCRC,SerialInBuffer[SerialInPacketPtr-1]);
 
                 if (CalculatedCRC == SerialInBuffer[SerialInPacketPtr-1])
                 {

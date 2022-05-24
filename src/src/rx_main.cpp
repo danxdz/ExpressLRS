@@ -1138,7 +1138,7 @@ static void servosUpdate(unsigned long now)
         {
             const rx_config_pwm_t *chConfig = config.GetPwmChannel(ch);
             uint16_t us = CRSF_to_US(crsf.GetChannelOutput(chConfig->val.inputChannel));
-            DBG("ch %u- ana: %u - dig: %u - inv: %u",ch,chConfig->val.ana,chConfig->val.dig,chConfig->val.inverted);
+            //DBG("ch %u- ana: %u - dig: %u - inv: %u",ch,chConfig->val.ana,chConfig->val.dig,chConfig->val.inverted);
             if (chConfig->val.inverted)
                 us = 3000U - us;
             if (Servos[ch]) {
